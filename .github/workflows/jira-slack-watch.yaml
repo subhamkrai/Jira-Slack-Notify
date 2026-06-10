@@ -6,6 +6,7 @@ name: Jira Slack Notify
 # Required repository secrets:
 #   JIRA_EMAIL
 #   JIRA_API_TOKEN
+#   JIRA_CLOUD_ID
 #   SLACK_NOTIFY_WEBHOOK_URL
 
 on:
@@ -41,6 +42,7 @@ jobs:
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_CLOUD_ID: ${{ secrets.JIRA_CLOUD_ID }}
           SLACK_NOTIFY_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_WEBHOOK_URL }}
         run: |
           chmod +x scripts/jira-slack-notify/watch.sh scripts/jira-slack-notify/notify.sh

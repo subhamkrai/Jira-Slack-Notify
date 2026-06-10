@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared Jira → Slack helpers (source from other scripts; do not execute directly).
 [[ -n "${JIRA_SLACK_NOTIFY_COMMON_LOADED:-}" ]] && return 0
 JIRA_SLACK_NOTIFY_COMMON_LOADED=1
@@ -13,8 +14,7 @@ fi
 
 : "${JIRA_EMAIL:?Set JIRA_EMAIL in $ENV_FILE or GitHub Actions secrets}"
 : "${JIRA_API_TOKEN:?Set JIRA_API_TOKEN in $ENV_FILE or GitHub Actions secrets}"
-
-": "${JIRA_CLOUD_ID:?Set JIRA_CLOUD_ID in $ENV_FILE or GitHub Actions secrets}"
+: "${JIRA_CLOUD_ID:?Set JIRA_CLOUD_ID in $ENV_FILE or GitHub Actions secrets}"
 JIRA_PROJECT="${JIRA_PROJECT:-DFBUGS}"
 JIRA_SITE="${JIRA_SITE:-redhat.atlassian.net}"
 JIRA_SEARCH_URL="https://api.atlassian.com/ex/jira/${JIRA_CLOUD_ID}/rest/api/3/search/jql"
