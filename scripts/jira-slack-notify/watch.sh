@@ -11,7 +11,9 @@ init=0
 jql="project = ${JIRA_PROJECT} AND issuetype = Bug AND (component in (rook, odf-cli) OR updated >= -30m) ORDER BY updated DESC"
 
 tmp=$(mktemp)
-trap 'rm -f "$tmp"' EXIT
+events="${tmp}.events"
+state_tmp="${state}.tmp"
+trap 'rm -f "$tmp" "$events" "$state_tmp"' EXIT
 
 jira_search "$jql" >"$tmp"
 
@@ -26,26 +28,35 @@ if [[ ! -f "$state" || "$init" -eq 1 ]]; then
   exit 0
 fi
 
-jq -s '.[0] + .[1]' "$state" <(snapshot) >"${state}.tmp"
+if ! jq -e 'type == "object"' "$state" >/dev/null; then
+  echo "invalid state, re-seeding" >&2
+  snapshot >"$state"
+  echo "seeded $(jq 'length' "$state") issues"
+  exit 0
+fi
+
+jq -s '.[0] + .[1]' "$state" <(snapshot) >"$state_tmp"
 
 jq -s --slurpfile issues "$tmp" '
   (.[0]) as $prev |
+  def recent_created:
+    (.fields.created // "") as $c |
+    ($c | length) > 9 and
+    (($c | split("T")[0] | strptime("%Y-%m-%d") | mktime) > (now - 86400));
   [$issues[0][] |
     .key as $key |
     [.fields.components[]?.name | select(. == "rook" or . == "odf-cli")] as $now |
     ($prev[$key] // []) as $was |
     if ($now | length) == 0 then empty
     elif ($was | length) == 0 then
-      if (((.fields.created // "") | split("T")[0] | strptime("%Y-%m-%d") | mktime) > (now - 86400)) then
-        {key: $key, event: "opened"}
-      else
-        {key: $key, event: "moved"}
+      if recent_created then {key: $key, event: "opened"}
+      else {key: $key, event: "moved"}
       end
     elif ($now - $was | length) > 0 then {key: $key, event: "moved"}
     else empty
     end
   ]
-' "$state" >"${tmp}.events"
+' "$state" >"$events"
 
 notified=0
 while IFS= read -r row; do
@@ -54,7 +65,7 @@ while IFS= read -r row; do
   if "$dir/notify.sh" --issue "$key" --event "$ev"; then
     notified=$((notified + 1))
   fi
-done < <(jq -c '.[]' "${tmp}.events")
+done < <(jq -c '.[]' "$events")
 
-mv "${state}.tmp" "$state"
-echo "events=$(jq 'length' "${tmp}.events") notified=$notified"
+mv "$state_tmp" "$state"
+echo "events=$(jq 'length' "$events") notified=$notified"

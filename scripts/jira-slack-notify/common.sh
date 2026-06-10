@@ -9,15 +9,39 @@ if [[ -f "$envfile" ]]; then
   set +a
 fi
 
-: "${JIRA_EMAIL:?}"
-: "${JIRA_API_TOKEN:?}"
-: "${JIRA_CLOUD_ID:?}"
+strip() { printf '%s' "$1" | tr -d ' \r\n\t'; }
+
+JIRA_EMAIL=$(strip "${JIRA_EMAIL:-}")
+JIRA_API_TOKEN=$(strip "${JIRA_API_TOKEN:-}")
+JIRA_CLOUD_ID=$(strip "${JIRA_CLOUD_ID:-}")
+
+: "${JIRA_EMAIL:?set JIRA_EMAIL}"
+: "${JIRA_API_TOKEN:?set JIRA_API_TOKEN}"
+: "${JIRA_CLOUD_ID:?set JIRA_CLOUD_ID}"
+
+if [[ ! "$JIRA_CLOUD_ID" =~ ^[0-9a-f-]{36}$ ]]; then
+  echo "JIRA_CLOUD_ID looks invalid (expected UUID)" >&2
+  exit 1
+fi
 
 JIRA_PROJECT="${JIRA_PROJECT:-DFBUGS}"
 JIRA_SITE="${JIRA_SITE:-redhat.atlassian.net}"
 JIRA_SEARCH_URL="https://api.atlassian.com/ex/jira/${JIRA_CLOUD_ID}/rest/api/3/search/jql"
 
 command -v jq >/dev/null || { echo "need jq" >&2; exit 1; }
+
+jira_curl() {
+  local err code out
+  err=$(mktemp)
+  if ! out=$(curl -sf -m 60 "$@" 2>"$err"); then
+    code=$?
+    echo "jira request failed (curl exit $code): $(tr '\n' ' ' <"$err")" >&2
+    rm -f "$err"
+    exit "$code"
+  fi
+  rm -f "$err"
+  printf '%s' "$out"
+}
 
 jira_search() {
   local jql="$1" token="" page body merged result
@@ -31,7 +55,7 @@ jira_search() {
       body=$(jq -nc --arg jql "$jql" \
         '{jql: $jql, maxResults: 100, fields: ["summary","components","created"]}')
     fi
-    page=$(curl -sf -m 60 -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+    page=$(jira_curl -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
       -H 'Content-Type: application/json' -H 'Accept: application/json' \
       -X POST "$JIRA_SEARCH_URL" -d "$body")
     if err=$(jq -r '.errorMessages[0] // empty' <<<"$page"); [[ -n "$err" ]]; then
@@ -50,11 +74,19 @@ jira_search() {
 }
 
 jira_fetch_issue() {
-  curl -sf -m 60 -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  jira_curl -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
     -H 'Accept: application/json' \
     "https://api.atlassian.com/ex/jira/${JIRA_CLOUD_ID}/rest/api/3/issue/$1?fields=summary,components"
 }
 
 post_slack() {
-  curl -sf -m 60 -X POST "$1" -H 'Content-Type: application/json' -d "$2"
+  local err code
+  err=$(mktemp)
+  if ! curl -sf -m 60 -o /dev/null -X POST "$1" -H 'Content-Type: application/json' -d "$2" 2>"$err"; then
+    code=$?
+    echo "slack post failed (curl exit $code): $(tr '\n' ' ' <"$err")" >&2
+    rm -f "$err"
+    exit "$code"
+  fi
+  rm -f "$err"
 }

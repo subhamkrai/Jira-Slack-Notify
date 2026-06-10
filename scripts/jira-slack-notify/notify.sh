@@ -4,7 +4,8 @@ set -euo pipefail
 dir="$(cd "$(dirname "$0")" && pwd)"
 source "$dir/common.sh"
 
-: "${SLACK_NOTIFY_WEBHOOK_URL:?}"
+: "${SLACK_NOTIFY_WEBHOOK_URL:?set SLACK_NOTIFY_WEBHOOK_URL}"
+SLACK_NOTIFY_WEBHOOK_URL=$(strip "${SLACK_NOTIFY_WEBHOOK_URL}")
 
 issue=""
 event=""
