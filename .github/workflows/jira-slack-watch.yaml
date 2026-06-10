@@ -2,7 +2,7 @@ name: Jira Slack Notify
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       init_state:
