@@ -54,9 +54,9 @@ comp_label=$(jq -r 'join(", ")' <<<"$comps")
 url=$(issue_jira_url "$issue_key")
 
 if [[ "$event" == "opened" ]]; then
-  headline="🆕 New bug opened to ${comp_label}"
+  headline="🤦‍♂️ New bug opened to ${comp_label}"
 else
-  headline="📥 Bug moved to ${comp_label}"
+  headline="🤦‍♂️ Bug moved to ${comp_label}"
 fi
 
 payload=$(jq -nc \
