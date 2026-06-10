@@ -65,44 +65,30 @@ fi
 
 summary=$(jq -r '.fields.summary // "?"' <<<"$issue_json" \
   | tr '\t' ' ' | sed 's/|/\//g')
-assignee=$(jq -r '.fields.assignee.displayName // "Unassigned"' <<<"$issue_json")
-status=$(jq -r '.fields.status.name // "?"' <<<"$issue_json")
 comp_label=$(jq -r 'join(", ")' <<<"$comps")
 url=$(issue_jira_url "$issue_key")
 
 if [[ "$event" == "opened" ]]; then
-  headline="🆕 New bug opened: ${issue_key}"
+  headline="🆕 New bug opened to ${comp_label}"
 else
-  headline="📥 Bug moved to rook/odf-cli: ${issue_key}"
+  headline="📥 Bug moved to ${comp_label}"
 fi
 
 if [[ "$SLACK_NOTIFY_WEBHOOK_URL" == *"/services/"* ]]; then
   message="${headline}
-Component: ${comp_label}
-Status: ${status}
-Assignee: ${assignee}
-Summary: ${summary}
-${url}"
+${url}
+*Summary*
+${summary}"
   payload=$(jq -nc --arg text "$message" '{text: $text}')
 else
   payload=$(jq -nc \
     --arg headline "$headline" \
-    --arg issue_key "$issue_key" \
-    --arg event "$event" \
-    --arg component "$comp_label" \
-    --arg status "$status" \
-    --arg assignee "$assignee" \
-    --arg summary "$summary" \
     --arg url "$url" \
+    --arg summary "$summary" \
     '{
       headline: $headline,
-      issue_key: $issue_key,
-      event: $event,
-      component: $component,
-      status: $status,
-      assignee: $assignee,
-      summary: $summary,
-      url: $url
+      url: $url,
+      summary: $summary
     }')
 fi
 
