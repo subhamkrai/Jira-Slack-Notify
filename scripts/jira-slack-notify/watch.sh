@@ -68,10 +68,10 @@ jq -s --slurpfile issues "$issues_file" '
     ($prev[$issue.key] // null) as $was |
     if ($now | length) == 0 then empty
     elif $was == null or ($was | length) == 0 then
-      if recent_created then {key: $issue.key, event: "opened", issue: $issue}
-      else {key: $issue.key, event: "moved", issue: $issue}
+      if recent_created then {key: $issue.key, event: "opened"}
+      else {key: $issue.key, event: "moved"}
       end
-    elif ($now - $was | length) > 0 then {key: $issue.key, event: "moved", issue: $issue}
+    elif ($now - $was | length) > 0 then {key: $issue.key, event: "moved"}
     else empty
     end
   ]
@@ -81,11 +81,10 @@ count=$(jq 'length' "$events_file")
 notified=0
 
 if [[ "$count" -gt 0 ]]; then
-  notify_script="$NOTIFY_DIR/notify.sh"
   while IFS= read -r row; do
     key=$(jq -r '.key' <<<"$row")
     event=$(jq -r '.event' <<<"$row")
-    if "$notify_script" --issue "$key" --event "$event"; then
+    if "$NOTIFY_DIR/notify.sh" --issue "$key" --event "$event"; then
       notified=$((notified + 1))
     else
       echo "Failed to notify $key ($event)." >&2

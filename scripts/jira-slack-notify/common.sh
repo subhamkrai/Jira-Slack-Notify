@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 # Shared Jira → Slack helpers (source from other scripts; do not execute directly).
 [[ -n "${JIRA_SLACK_NOTIFY_COMMON_LOADED:-}" ]] && return 0
 JIRA_SLACK_NOTIFY_COMMON_LOADED=1
@@ -18,7 +18,7 @@ fi
 JIRA_PROJECT="${JIRA_PROJECT:-DFBUGS}"
 JIRA_SITE="${JIRA_SITE:-redhat.atlassian.net}"
 JIRA_SEARCH_URL="https://api.atlassian.com/ex/jira/${JIRA_CLOUD_ID}/rest/api/3/search/jql"
-ISSUE_FIELDS='["summary","assignee","components","created","updated","issuetype","status"]'
+ISSUE_FIELDS='["summary","components","created"]'
 
 command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
 
@@ -57,7 +57,7 @@ jira_fetch_issue() {
   local key="$1"
   curl -sf -m 60 -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
     -H 'Accept: application/json' \
-    "https://api.atlassian.com/ex/jira/${JIRA_CLOUD_ID}/rest/api/3/issue/${key}?fields=summary,assignee,components,created,updated,issuetype,status"
+    "https://api.atlassian.com/ex/jira/${JIRA_CLOUD_ID}/rest/api/3/issue/${key}?fields=summary,components"
 }
 
 issue_target_components() {

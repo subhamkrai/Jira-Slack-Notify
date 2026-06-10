@@ -22,7 +22,6 @@ event=""
 
 usage() {
   echo "Usage: $0 --issue KEY --event opened|moved" >&2
-  echo "       $0   # read JSON from stdin: {key, event} or full Jira issue" >&2
   exit 1
 }
 
@@ -35,27 +34,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-issue_json=""
-if [[ -z "$issue_key" && ! -t 0 ]]; then
-  input=$(cat)
-  issue_key=$(jq -r '.key // .issue.key // empty' <<<"$input")
-  event=$(jq -r '.event // empty' <<<"$input")
-  if jq -e '.fields' >/dev/null 2>&1 <<<"$input"; then
-    issue_json="$input"
-  elif jq -e '.issue.fields' >/dev/null 2>&1 <<<"$input"; then
-    issue_json=$(jq '.issue' <<<"$input")
-  fi
-fi
-
 [[ -n "$issue_key" ]] || usage
 [[ "$event" == "opened" || "$event" == "moved" ]] || {
   echo "event must be opened or moved" >&2
   exit 1
 }
 
-if [[ -z "$issue_json" ]]; then
-  issue_json=$(jira_fetch_issue "$issue_key")
-fi
+issue_json=$(jira_fetch_issue "$issue_key")
 
 comps=$(issue_target_components <<<"$issue_json")
 if [[ "$comps" == "[]" ]]; then
@@ -74,23 +59,15 @@ else
   headline="📥 Bug moved to ${comp_label}"
 fi
 
-if [[ "$SLACK_NOTIFY_WEBHOOK_URL" == *"/services/"* ]]; then
-  message="${headline}
-${url}
-*Summary*
-${summary}"
-  payload=$(jq -nc --arg text "$message" '{text: $text}')
-else
-  payload=$(jq -nc \
-    --arg headline "$headline" \
-    --arg url "$url" \
-    --arg summary "$summary" \
-    '{
-      headline: $headline,
-      url: $url,
-      summary: $summary
-    }')
-fi
+payload=$(jq -nc \
+  --arg headline "$headline" \
+  --arg url "$url" \
+  --arg summary "$summary" \
+  '{
+    headline: $headline,
+    url: $url,
+    summary: $summary
+  }')
 
 post_slack "$SLACK_NOTIFY_WEBHOOK_URL" "$payload"
 echo "Notified Slack: ${issue_key} (${event})."
