@@ -18,12 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      # New key per run (save never overwrites). restore-keys picks the latest cache.
       - uses: actions/cache/restore@v4
+        id: cache
         with:
           path: scripts/jira-slack-notify/.watch-state.json
-          key: jira-slack-watch-state-${{ github.repository }}
+          key: jira-slack-watch-${{ github.repository }}-${{ github.run_id }}
           restore-keys: |
-            jira-slack-watch-state-
+            jira-slack-watch-${{ github.repository }}-
 
       - name: watch
         env:
@@ -43,4 +45,4 @@ jobs:
         if: always()
         with:
           path: scripts/jira-slack-notify/.watch-state.json
-          key: jira-slack-watch-state-${{ github.repository }}
+          key: jira-slack-watch-${{ github.repository }}-${{ github.run_id }}
